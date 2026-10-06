@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Snake Game</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            background: #f1f5f9;
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 520px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        /* Score */
+
+        .score-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .score-box {
+            background: white;
+            border-radius: 14px;
+            padding: 12px 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
+        }
+
+        .score-box span {
+            display: block;
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .score-box strong {
+            font-size: 22px;
+            color: #16a34a;
+        }
+
+        /* Canvas */
+
+        .canvas-wrapper {
+            position: relative;
+            background: white;
+            padding: 10px;
+            border-radius: 20px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.1);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+
+        /* Overlay */
+
+        .overlay {
+            position: absolute;
+            inset: 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.94);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 5;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        .overlay h2 {
+            font-size: 32px;
+        }
+
+        .overlay p {
+            color: #64748b;
+        }
+
+        /* Buttons */
+
+        button {
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+
+        .main-btn {
+            background: #16a34a;
+            color: white;
+            padding: 13px 25px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .main-btn:hover {
+            background: #15803d;
+            transform: translateY(-2px);
+        }
+
+        .controls-top {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .control-btn {
+            flex: 1;
+            background: white;
+            color: #334155;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: bold;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .control-btn:hover {
+            background: #e2e8f0;
+        }
+
+        /* Mobile controls */
+
+        .mobile-controls {
+            margin: 20px auto 0;
+            width: 190px;
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            gap: 5px;
+            justify-content: center;
+        }
+
+        .direction {
+            width: 60px;
+            height: 55px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            font-size: 25px;
+            font-weight: bold;
+        }
+
+        .direction:active {
+            transform: scale(0.9);
+            background: #dcfce7;
+        }
+
+        .empty {
+            visibility: hidden;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 14px;
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        @media (max-width: 500px) {
+            body {
+                padding: 10px;
+            }
+
+            .title {
+                font-size: 32px;
+            }
+
+            .score-box {
+                padding: 9px 3px;
+            }
+
+            .score-box strong {
+                font-size: 19px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="game-container">
+
+    <div class="title">🐍 Snake Game</div>
+
+    <div class="subtitle">
+        Жыланды башкар жана рекорд кой!
+    </div>
+
+    <!-- SCORE -->
+    <div class="score-board">
+
+        <div class="score-box">
+            <span>Упай</span>
+            <strong id="score">0</strong>
+        </div>
+
+        <div class="score-box">
+            <span>Рекорд</span>
+            <strong id="highScore">0</strong>
+        </div>
+
+        <div class="score-box">
+            <span>Деңгээл</span>
+            <strong id="level">1</strong>
+        </div>
+
+    </div>
+
+    <!-- GAME -->
+    <div class="canvas-wrapper">
+
+        <canvas id="gameCanvas" width="500" height="500"></canvas>
+
+        <!-- HOME / GAME OVER -->
+        <div class="overlay" id="overlay">
+
+            <h2 id="overlayTitle">🐍 Snake Game</h2>
+
+            <p id="overlayText">
+                Оюнду баштоого даярсыңбы?
+            </p>
+
+            <button
+                class="main-btn"
+                id="startBtn">
+                ▶ ОЮНДУ БАШТОО
+            </button>
+
+        </div>
+
+    </div>
+
+    <!-- TOP CONTROLS -->
+    <div class="controls-top">
+
+        <button
+            class="control-btn"
+            id="pauseBtn">
+            ⏸ Пауза
+        </button>
+
+        <button
+            class="control-btn"
+            id="resetScoreBtn">
+            🗑 Рекордду тазалоо
+        </button>
+
+    </div>
+
+    <!-- MOBILE CONTROLS -->
+
+    <div class="mobile-controls">
+
+        <button
+            class="direction empty">
+        </button>
+
+        <button
+            class="direction"
+            data-direction="up">
+            ↑
+        </button>
+
+        <button
+            class="direction empty">
+        </button>
+
+        <button
+            class="direction"
+            data-direction="left">
+            ←
+        </button>
+
+        <button
+            class="direction"
+            data-direction="down">
+            ↓
+        </button>
+
+        <button
+            class="direction"
+            data-direction="right">
+            →
+        </button>
+
+    </div>
+
+    <!-- INSTRUCTIONS -->
+
+    <div class="instructions">
+
+        🎮 <b>Башкаруу:</b><br>
+
+        ⬆️ ⬇️ ⬅️ ➡️ же <b>W A S D</b><br>
+
+        <b>Space</b> — Пауза
+
+    </div>
+
+    <div class="footer">
+        Snake Game • HTML + CSS + JavaScript
+    </div>
+
+</div>
+
+
+<script>
+
+    // =========================================
+    // CANVAS
+    // =========================================
+
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const scoreElement = document.getElementById("score");
+    const highScoreElement = document.getElementById("highScore");
+    const levelElement = document.getElementById("level");
+
+    const overlay = document.getElementById("overlay");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+    const startBtn = document.getElementById("startBtn");
+
+    const pauseBtn = document.getElementById("pauseBtn");
+    const resetScoreBtn = document.getElementById("resetScoreBtn");
+
+    // =========================================
+    // SETTINGS
+    // =========================================
+
+    const gridSize = 25;
+
+    const tileCount = canvas.width / gridSize;
+
+    let snake;
+    let food;
+
+    let direction;
+    let nextDirection;
+
+    let score = 0;
+    let highScore = Number(
+        localStorage.getItem("snakeHighScore")
+    ) || 0;
+
+    let level = 1;
+
+    let gameRunning = false;
+    let paused = false;
+
+    let gameLoop;
+
+    // =========================================
+    // HIGH SCORE
+    // =========================================
+
+    highScoreElement.textContent = highScore;
+
+    // =========================================
+    // START GAME
+    // =========================================
+
+    function startGame() {
+
+        snake = [
+            { x: 10, y: 10 },
+            { x: 9, y: 10 },
+            { x: 8, y: 10 }
+        ];
+
+        direction = {
+            x: 1,
+            y: 0
+        };
+
+        nextDirection = {
+            x: 1,
+            y: 0
+        };
+
+        score = 0;
+        level = 1;
+
+        updateScore();
+
+        createFood();
+
+        gameRunning = true;
+        paused = false;
+
+        pauseBtn.textContent = "⏸ Пауза";
+
+        overlay.classList.add("hidden");
+
+        clearInterval(gameLoop);
+
+        gameLoop = setInterval(
+            updateGame,
+            getSpeed()
+        );
+    }
+
+    // =========================================
+    // SPEED
+    // =========================================
+
+    function getSpeed() {
+
+        const baseSpeed = 150;
+
+        const speed = baseSpeed - ((level - 1) * 10);
+
+        return Math.max(speed, 50);
+    }
+
+    // =========================================
+    // GAME UPDATE
+    // =========================================
+
+    function updateGame() {
+
+        if (!gameRunning || paused) {
+            return;
+        }
+
+        direction = nextDirection;
+
+        const head = {
+            x: snake[0].x + direction.x,
+            y: snake[0].y + direction.y
+        };
+
+        // Дубалга тийүү
+        if (
+            head.x < 0 ||
+            head.x >= tileCount ||
+            head.y < 0 ||
+            head.y >= tileCount
+        ) {
+            gameOver();
+            return;
+        }
+
+        // Өзүнө тийүү
+        for (let i = 0; i < snake.length; i++) {
+
+            if (
+                head.x === snake[i].x &&
+                head.y === snake[i].y
+            ) {
+                gameOver();
+                return;
+            }
+        }
+
+        snake.unshift(head);
+
+        // Тамак жеш
+        if (
+            head.x === food.x &&
+            head.y === food.y
+        ) {
+
+            score++;
+
+            // Ар бир 5 упай сайын деңгээл
+            const newLevel =
+                Math.min(
+                    10,
+                    Math.floor(score / 5) + 1
+                );
+
+            if (newLevel !== level) {
+
+                level = newLevel;
+
+                clearInterval(gameLoop);
+
+                gameLoop = setInterval(
+                    updateGame,
+                    getSpeed()
+                );
+            }
+
+            createFood();
+
+            playEatSound();
+
+        } else {
+
+            snake.pop();
+        }
+
+        updateScore();
+
+        drawGame();
+    }
+
+    // =========================================
+    // DRAW GAME
+    // =========================================
+
+    function drawGame() {
+
+        // Background
+        ctx.fillStyle = "#f8fafc";
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        // Grid
+        drawGrid();
+
+        // Food
+        drawFood();
+
+        // Snake
+        drawSnake();
+    }
+
+    // =========================================
+    // GRID
+    // =========================================
+
+    function drawGrid() {
+
+        ctx.strokeStyle = "#e2e8f0";
+        ctx.lineWidth = 1;
+
+        for (
+            let x = 0;
+            x <= canvas.width;
+            x += gridSize
+        ) {
+
+            ctx.beginPath();
+
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+
+            ctx.stroke();
+        }
+
+        for (
+            let y = 0;
+            y <= canvas.height;
+            y += gridSize
+        ) {
+
+            ctx.beginPath();
+
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+
+            ctx.stroke();
+        }
+    }
+
+    // =========================================
+    // DRAW SNAKE
+    // =========================================
+
+    function drawSnake() {
+
+        snake.forEach((part, index) => {
+
+            if (index === 0) {
+
+                // Head
+                ctx.fillStyle = "#15803d";
+
+            } else {
+
+                ctx.fillStyle = "#22c55e";
+            }
+
+            ctx.beginPath();
+
+            ctx.roundRect(
+                part.x * gridSize + 2,
+                part.y * gridSize + 2,
+                gridSize - 4,
+                gridSize - 4,
+                6
+            );
+
+            ctx.fill();
+        });
+
+        // Eyes
+        drawSnakeEyes();
+    }
+
+    // =========================================
+    // SNAKE EYES
+    // =========================================
+
+    function drawSnakeEyes() {
+
+        const head = snake[0];
+
+        const x = head.x * gridSize;
+        const y = head.y * gridSize;
+
+        ctx.fillStyle = "white";
+
+        let eye1;
+        let eye2;
+
+        if (direction.x === 1) {
+
+            eye1 = {
+                x: x + 17,
+                y: y + 7
+            };
+
+            eye2 = {
+                x: x + 17,
+                y: y + 17
+            };
+
+        } else if (direction.x === -1) {
+
+            eye1 = {
+                x: x + 7,
+                y: y + 7
+            };
+
+            eye2 = {
+                x: x + 7,
+                y: y + 17
+            };
+
+        } else if (direction.y === -1) {
+
+            eye1 = {
+                x: x + 7,
+                y: y + 7
+            };
+
+            eye2 = {
+                x: x + 17,
+                y: y + 7
+            };
+
+        } else {
+
+            eye1 = {
+                x: x + 7,
+                y: y + 17
+            };
+
+            eye2 = {
+                x: x + 17,
+                y: y + 17
+            };
+        }
+
+        ctx.beginPath();
+
+        ctx.arc(
+            eye1.x,
+            eye1.y,
+            3,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+
+        ctx.beginPath();
+
+        ctx.arc(
+            eye2.x,
+            eye2.y,
+            3,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+
+    // =========================================
+    // FOOD
+    // =========================================
+
+    function drawFood() {
+
+        const centerX =
+            food.x * gridSize + gridSize / 2;
+
+        const centerY =
+            food.y * gridSize + gridSize / 2;
+
+        ctx.fillStyle = "#ef4444";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            centerX,
+            centerY,
+            9,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+
+        // Сабагы
+        ctx.fillStyle = "#16a34a";
+
+        ctx.fillRect(
+            centerX - 2,
+            centerY - 11,
+            4,
+            5
+        );
+    }
+
+    // =========================================
+    // CREATE FOOD
+    // =========================================
+
+    function createFood() {
+
+        let valid = false;
+
+        while (!valid) {
+
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+
+            valid = !snake.some(
+                part =>
+                    part.x === food.x &&
+                    part.y === food.y
+            );
+        }
+    }
+
+    // =========================================
+    // DIRECTION
+    // =========================================
+
+    function changeDirection(newDirection) {
+
+        if (!gameRunning) {
+            return;
+        }
+
+        // Карама-каршы багытка бурууга болбойт
+        if (
+            newDirection.x === -direction.x &&
+            newDirection.y === -direction.y
+        ) {
+            return;
+        }
+
+        nextDirection = newDirection;
+    }
+
+    // =========================================
+    // KEYBOARD
+    // =========================================
+
+    document.addEventListener(
+        "keydown",
+        function(event) {
+
+            const key = event.key.toLowerCase();
+
+            if (
+                key === "arrowup" ||
+                key === "w"
+            ) {
+
+                changeDirection({
+                    x: 0,
+                    y: -1
+                });
+
+            } else if (
+                key === "arrowdown" ||
+                key === "s"
+            ) {
+
+                changeDirection({
+                    x: 0,
+                    y: 1
+                });
+
+            } else if (
+                key === "arrowleft" ||
+                key === "a"
+            ) {
+
+                changeDirection({
+                    x: -1,
+                    y: 0
+                });
+
+            } else if (
+                key === "arrowright" ||
+                key === "d"
+            ) {
+
+                changeDirection({
+                    x: 1,
+                    y: 0
+                });
+
+            } else if (key === " ") {
+
+                togglePause();
+            }
+        }
+    );
+
+    // =========================================
+    // MOBILE CONTROLS
+    // =========================================
+
+    document.querySelectorAll(
+        ".direction"
+    ).forEach(button => {
+
+        button.addEventListener(
+            "click",
+            function() {
+
+                const dir =
+                    this.dataset.direction;
+
+                if (dir === "up") {
+
+                    changeDirection({
+                        x: 0,
+                        y: -1
+                    });
+
+                } else if (dir === "down") {
+
+                    changeDirection({
+                        x: 0,
+                        y: 1
+                    });
+
+                } else if (dir === "left") {
+
+                    changeDirection({
+                        x: -1,
+                        y: 0
+                    });
+
+                } else if (dir === "right") {
+
+                    changeDirection({
+                        x: 1,
+                        y: 0
+                    });
+                }
+            }
+        );
+    });
+
+    // =========================================
+    // PAUSE
+    // =========================================
+
+    function togglePause() {
+
+        if (!gameRunning) {
+            return;
+        }
+
+        paused = !paused;
+
+        if (paused) {
+
+            pauseBtn.textContent = "▶ Улантуу";
+
+            overlayTitle.textContent =
+                "⏸ ОЮН ТОКТОТУЛДУ";
+
+            overlayText.textContent =
+                "Улантуу үчүн төмөнкү кнопканы бас";
+
+            startBtn.textContent =
+                "▶ УЛАНТУУ";
+
+            overlay.classList.remove("hidden");
+
+        } else {
+
+            pauseBtn.textContent = "⏸ Пауза";
+
+            overlay.classList.add("hidden");
+        }
+    }
+
+    // =========================================
+    // GAME OVER
+    // =========================================
+
+    function gameOver() {
+
+        gameRunning = false;
+
+        clearInterval(gameLoop);
+
+        if (score > highScore) {
+
+            highScore = score;
+
+            localStorage.setItem(
+                "snakeHighScore",
+                highScore
+            );
+
+            highScoreElement.textContent =
+                highScore;
+        }
+
+        playGameOverSound();
+
+        overlayTitle.textContent =
+            "💥 GAME OVER";
+
+        overlayText.textContent =
+            `Сенин упайың: ${score}`;
+
+        startBtn.textContent =
+            "🔄 КАЙРА ОЙНОО";
+
+        overlay.classList.remove("hidden");
+    }
+
+    // =========================================
+    // UPDATE SCORE
+    // =========================================
+
+    function updateScore() {
+
+        scoreElement.textContent = score;
+
+        levelElement.textContent = level;
+
+        highScoreElement.textContent =
+            highScore;
+    }
+
+    // =========================================
+    // START BUTTON
+    // =========================================
+
+    startBtn.addEventListener(
+        "click",
+        function() {
+
+            if (paused) {
+
+                togglePause();
+
+            } else {
+
+                startGame();
+            }
+        }
+    );
+
+    // =========================================
+    // PAUSE BUTTON
+    // =========================================
+
+    pauseBtn.addEventListener(
+        "click",
+        togglePause
+    );
+
+    // =========================================
+    // RESET HIGH SCORE
+    // =========================================
+
+    resetScoreBtn.addEventListener(
+        "click",
+        function() {
+
+            const confirmReset =
+                confirm(
+                    "High Score'ду тазалайсызбы?"
+                );
+
+            if (confirmReset) {
+
+                highScore = 0;
+
+                localStorage.removeItem(
+                    "snakeHighScore"
+                );
+
+                highScoreElement.textContent = 0;
+            }
+        }
+    );
+
+    // =========================================
+    // SOUND
+    // =========================================
+
+    let audioContext;
+
+    function getAudioContext() {
+
+        if (!audioContext) {
+
+            audioContext =
+                new (
+                    window.AudioContext ||
+                    window.webkitAudioContext
+                )();
+        }
+
+        return audioContext;
+    }
+
+    function playTone(
+        frequency,
+        duration
+    ) {
+
+        try {
+
+            const audio =
+                getAudioContext();
+
+            const oscillator =
+                audio.createOscillator();
+
+            const gain =
+                audio.createGain();
+
+            oscillator.frequency.value =
+                frequency;
+
+            oscillator.type = "sine";
+
+            gain.gain.setValueAtTime(
+                0.08,
+                audio.currentTime
+            );
+
+            gain.gain.exponentialRampToValueAtTime(
+                0.001,
+                audio.currentTime + duration
+            );
+
+            oscillator.connect(gain);
+
+            gain.connect(audio.destination);
+
+            oscillator.start();
+
+            oscillator.stop(
+                audio.currentTime + duration
+            );
+
+        } catch (error) {
+            // Sound иштебесе оюн токтобойт
+        }
+    }
+
+    function playEatSound() {
+
+        playTone(600, 0.08);
+    }
+
+    function playGameOverSound() {
+
+        playTone(180, 0.3);
+    }
+
+    // =========================================
+    // INITIAL DRAW
+    // =========================================
+
+    snake = [
+        { x: 10, y: 10 },
+        { x: 9, y: 10 },
+        { x: 8, y: 10 }
+    ];
+
+    food = {
+        x: 15,
+        y: 10
+    };
+
+    direction = {
+        x: 1,
+        y: 0
+    };
+
+    nextDirection = {
+        x: 1,
+        y: 0
+    };
+
+    drawGame();
+
+</script>
+
+</body>
+</html>
